@@ -12,3 +12,4 @@ wheels/
 # Manual Ignore files
 /cache
 /data
+uv.lock
