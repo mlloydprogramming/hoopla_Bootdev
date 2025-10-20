@@ -10,9 +10,10 @@ from lib.keyword_search import (
     tf_idf_command,
     bm25_idf_command,
     bm25_tf_command,
+    bm25_search_command,
 )
 
-from lib.search_utils import BM25_K1, BM25_B
+from lib.search_utils import BM25_K1, BM25_B, DEFAULT_SEARCH_LIMIT
 
 
 def main() -> None:
@@ -44,6 +45,10 @@ def main() -> None:
     bm25_tf_parser.add_argument("k1", type=float, nargs="?", default=BM25_K1, help="Tunable k1 parameter (default: 1.5)")
     bm25_tf_parser.add_argument("b", type=float, nargs="?", default=BM25_B, help="Tunable b parameter (default: 0.75)")
 
+    bm25_search_parser = subparsers.add_parser("bm25search", help="Search movies using BM25 scoring")
+    bm25_search_parser.add_argument("query", type=str, help="Search query")
+    bm25_search_parser.add_argument("--limit", type=int, nargs="?", default=DEFAULT_SEARCH_LIMIT, help="Number of results to return (default: 10)")
+
     args = parser.parse_args()
 
     match args.command:
@@ -71,6 +76,10 @@ def main() -> None:
         case "bm25tf":
             bm25_tf = bm25_tf_command(args.doc_id, args.term, args.k1, args.b)
             print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25_tf:.2f}")
+        case "bm25search":
+            bm25_score = bm25_search_command(args.query, args.limit)
+            for i, res in enumerate(bm25_score, 1):
+                print(f"{i}. ({res['id']}) {res['title']} - Score: {res['score']:.2f}")
         case _:
             parser.exit(2, parser.format_help())
 
