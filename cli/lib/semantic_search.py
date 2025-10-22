@@ -67,3 +67,10 @@ def verify_embeddings():
     embeddings = search_instance.load_or_create_embeddings(documents)
     print(f"Number of docs: {len(documents)}")
     print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+
+def embed_query_text(query: str):
+    search_instance = SemanticSearch()
+    query_embedding = search_instance.generate_embedding(query)
+    print(f"Query: {query}")
+    print(f"First 5 dimensions: {query_embedding[:5]}")
+    print(f"Shape: {query_embedding.shape}")
