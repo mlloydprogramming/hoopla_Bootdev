@@ -1,6 +1,7 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
+import re
 
 from torch import cosine_similarity
 from lib.search_utils import load_movies, DEFAULT_SEARCH_LIMIT
@@ -145,5 +146,19 @@ def chunk_text(text: str, chunk_size: int = 200, overlap: int = 0) -> list[str]:
         chunks.append(" ".join(chunk_words))
         i += chunk_size - overlap
     print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"{i}. {chunk}")
+
+def semantic_chunk_text(text: str, max_chunk_size: int = 4, overlap: int = 0) -> list[str]:
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    chunks = []
+    n_sentences = len(sentences)
+    i = 0
+
+    while i < n_sentences - overlap:
+        chunk_sentences = sentences[i:i + max_chunk_size]
+        chunks.append(" ".join(chunk_sentences))
+        i += max_chunk_size - overlap
+    print(f"Semantically chunking {len(text)} characters")
     for i, chunk in enumerate(chunks, 1):
         print(f"{i}. {chunk}")
