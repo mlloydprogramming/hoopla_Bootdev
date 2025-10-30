@@ -5,7 +5,7 @@ import re
 import json
 
 from torch import cosine_similarity
-from lib.search_utils import load_movies, DEFAULT_SEARCH_LIMIT
+from lib.search_utils import load_movies, DEFAULT_SEARCH_LIMIT, SCORE_PRECISION
 
 
 class SemanticSearch:
@@ -136,6 +136,48 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
         else:
             return self.build_chunk_embeddings(documents)
+        
+    def search_chunks(self, query, limit: int = 10):
+        embedded_query = self.generate_embedding(query)
+        chunk_scores = []
+        for i, chunk_embedding in enumerate(self.chunk_embeddings):
+            score = cosine_similarity(embedded_query, chunk_embedding)
+            chunk_scores.append(
+                {
+                    "chunk_idx": i,
+                    "movie_idx": self.chunk_metadata[i]["movie_idx"],
+                    "score": score
+                }
+            )
+        
+        movie_idx_to_score_map = {}
+
+        for entry in chunk_scores:
+            movie_idx = entry["movie_idx"]
+            score = entry["score"]
+            if movie_idx not in movie_idx_to_score_map or score > movie_idx_to_score_map[movie_idx]:
+                movie_idx_to_score_map[movie_idx] = score
+
+        sorted_movies = sorted(movie_idx_to_score_map.items(), key=lambda x: x[1], reverse=True)
+        filtered_results = sorted_movies[:limit]
+        formatted_results = []
+        
+        for i, result in enumerate(filtered_results):
+            doc_id = self.documents[result[0]]['id']
+            title = self.documents[result[0]]['title']
+            document = self.documents[result[0]]['description']
+            score = result[1]
+            metadata = self.chunk_metadata[result[0]]
+            formatted_result = {
+                "id": doc_id,
+                "title": title,
+                "document": document[:100],
+                "score": round(score, SCORE_PRECISION),
+                "metadata": metadata or {}
+            }
+            formatted_results.append(formatted_result)
+        
+        return formatted_results
 
 def verify_model():
     search_instance = SemanticSearch()
@@ -223,3 +265,14 @@ def embed_chunks_command():
     documents = load_movies()
     chunk_embeddings = search_instance.load_or_create_chunk_embeddings(documents)
     print(f"Generated {len(chunk_embeddings)} chunked embeddings")
+
+def search_chunked_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT):
+    search_instance = ChunkedSemanticSearch()
+    documents = load_movies()
+    search_instance.load_or_create_chunk_embeddings(documents)
+
+    results = search_instance.search_chunks(query, limit)
+
+    for i, res in enumerate(results, 1):
+        print(f"\n{i}. {res['title']} (score: {res['score']:.4f})")
+        print(f"   {res['document']}...")
