@@ -1,10 +1,12 @@
 import os
+from typing import Optional
 
 from .keyword_search import InvertedIndex
+from .query_enhancement import enhance_query
 from .search_utils import (
     DEFAULT_ALPHA,
-    RRF_K,
     DEFAULT_SEARCH_LIMIT,
+    RRF_K,
     format_search_result,
     load_movies,
 )
@@ -54,7 +56,6 @@ def normalize_scores(scores: list[float]) -> list[float]:
     normalized_scores = []
     for s in scores:
         normalized_scores.append((s - min_score) / (max_score - min_score))
-
     return normalized_scores
 
 
@@ -124,24 +125,6 @@ def combine_search_results(
     return sorted(hybrid_results, key=lambda x: x["score"], reverse=True)
 
 
-def weighted_search_command(
-    query: str, alpha: float = DEFAULT_ALPHA, limit: int = DEFAULT_SEARCH_LIMIT
-) -> dict:
-    movies = load_movies()
-    searcher = HybridSearch(movies)
-
-    original_query = query
-
-    search_limit = limit
-    results = searcher.weighted_search(query, alpha, search_limit)
-
-    return {
-        "original_query": original_query,
-        "query": query,
-        "alpha": alpha,
-        "results": results,
-    }
-
 def rrf_score(rank: int, k: int = RRF_K) -> float:
     return 1 / (k + rank)
 
@@ -193,13 +176,10 @@ def reciprocal_rank_fusion(
         rrf_results.append(result)
 
     return sorted(rrf_results, key=lambda x: x["score"], reverse=True)
-        
 
 
-def rrf_search_command(
-    query: str,
-    k: int = RRF_K,
-    limit: int = DEFAULT_SEARCH_LIMIT,
+def weighted_search_command(
+    query: str, alpha: float = DEFAULT_ALPHA, limit: int = DEFAULT_SEARCH_LIMIT
 ) -> dict:
     movies = load_movies()
     searcher = HybridSearch(movies)
@@ -207,10 +187,38 @@ def rrf_search_command(
     original_query = query
 
     search_limit = limit
+    results = searcher.weighted_search(query, alpha, search_limit)
+
+    return {
+        "original_query": original_query,
+        "query": query,
+        "alpha": alpha,
+        "results": results,
+    }
+
+
+def rrf_search_command(
+    query: str,
+    k: int = RRF_K,
+    enhance: Optional[str] = None,
+    limit: int = DEFAULT_SEARCH_LIMIT,
+) -> dict:
+    movies = load_movies()
+    searcher = HybridSearch(movies)
+
+    original_query = query
+    enhanced_query = None
+    if enhance:
+        enhanced_query = enhance_query(query, method=enhance)
+        query = enhanced_query
+
+    search_limit = limit
     results = searcher.rrf_search(query, k, search_limit)
 
     return {
         "original_query": original_query,
+        "enhanced_query": enhanced_query,
+        "enhance_method": enhance,
         "query": query,
         "k": k,
         "results": results,
