@@ -1,15 +1,29 @@
 import argparse
 
-from lib.augmented_generation import rag_command
+from lib.augmented_generation import rag_command, summarize_command
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Retreival Augmented Generation CLI")
+    parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     rag_parser = subparsers.add_parser(
         "rag", help="Perform RAG (search + generate answer)"
     )
     rag_parser.add_argument("query", type=str, help="Search query for RAG")
+
+    summarize_parser = subparsers.add_parser(
+        "summarize", help="Generate multi-document summary"
+    )
+    summarize_parser.add_argument(
+        "query", type=str, help="Search query for summarization"
+    )
+    summarize_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Maximum number of documents to summarize",
+    )
 
     args = parser.parse_args()
 
@@ -22,9 +36,17 @@ def main():
             print()
             print("RAG Response:")
             print(result["answer"])
+        case "summarize":
+            result = summarize_command(args.query, args.limit)
+            print("Search Results:")
+            for document in result["search_results"]:
+                print(f"  - {document['title']}")
+            print()
+            print("LLM Summary:")
+            print(result["summary"])
         case _:
             parser.print_help()
 
+
 if __name__ == "__main__":
     main()
-
